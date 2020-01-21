@@ -2,44 +2,65 @@
 
 #include <major_criterion_method.hpp>
 
-Alternative MajorCriterionMethod(MarksMatrix alternatives, const Marks& odds) {
-    for (size_t i = 0; i < odds.size(); ++i) {
-        auto normalizedColumn = NormalWeightVector(GetColumn(alternatives, i));
-        alternatives = InsertColumn(alternatives, normalizedColumn, i);
+Alternative MajorCriterionMethod(MarksMatrix alternatives, Marks odds) {
+    size_t majorCriteriaIndex = std::distance(odds.begin(),
+                                              std::find(odds.begin(),
+                                                        odds.end(),
+                                                        1
+                                              )
+                                );
+
+    Marks extremums;
+    for (size_t column = 0; column < odds.size(); ++column) {
+        // Matrix normalization
+        auto newColumn = NormalWeightVector(GetColumn(alternatives, column));
+        alternatives = InsertColumn(alternatives, newColumn, column);
+
+        // Extremums generation
+        if (column == 0 || column == 2) {
+            extremums.push_back(*std::min_element(newColumn.begin(), newColumn.end()));
+        } else {
+            extremums.push_back(*std::max_element(newColumn.begin(), newColumn.end()));
+        }
+
+        // Odds initialization
+        odds[column] *= extremums[column];
     }
 
-    auto majorCriteriaIndex = std::distance(odds.begin(),
-                                           std::find(odds.begin(), odds.end(), .0));
-
-    Marks criteriaMaximums;
-    for (size_t criteriaIndex = 0; criteriaIndex < odds.size(); ++criteriaIndex) {
-        auto criteriaColumn = GetColumn(alternatives, criteriaIndex);
-        criteriaMaximums.push_back(*std::max_element(criteriaColumn.begin(), criteriaColumn.end()));
+    IndexList indexes(0, alternatives.size());
+    for (size_t i = 0; i < alternatives.size(); ++i) {
+        bool allowed = true;
+        for (size_t criteria = 0; criteria < odds.size(); ++criteria) {
+            if (criteria == 0 || criteria == 2) {
+                if (alternatives[i].marks[criteria] > odds[criteria]) {
+                    allowed = false;
+                    break;
+                }
+            } else {
+                if (alternatives[i].marks[criteria] < odds[criteria]) {
+                    allowed = false;
+                    break;
+                }
+            }
+        }
+        if (!allowed) {
+            indexes.Remove(i);
+        }
     }
 
-    Marks minimalAllowed(criteriaMaximums.size());
-    auto oddsIter = odds.begin();
-    std::transform(criteriaMaximums.begin(), criteriaMaximums.end(), minimalAllowed.begin(),
-            [&oddsIter](auto& maximum) {
-                return *(oddsIter++)*maximum;
-            });
-
-    auto satisfiedIter = std::remove_if(alternatives.begin(), alternatives.end(),
-            [&odds](auto& alternative) {
-                auto oddsIter = odds.begin();
-                return !std::all_of(alternative.marks.begin(), alternative.marks.end(),
-                        [&oddsIter](double mark) {
-                            return mark >= *(oddsIter++);
-                        });
-            });
-    alternatives.erase(satisfiedIter, alternatives.end());
-
-    if (alternatives.empty()) {
-        return Alternative{"no alternatives", Marks(odds.size(), .0)};
+    if (indexes.list.empty()) {
+        return Alternative{"no any alternative", {}};
     }
 
-    return *std::max_element(alternatives.begin(), alternatives.end(),
-            [majorCriteriaIndex=majorCriteriaIndex](auto& lhs, auto& rhs) {
-                return lhs.marks[majorCriteriaIndex] < rhs.marks[majorCriteriaIndex];
-            });
+    size_t withMin = indexes.list.front();
+    double min = std::numeric_limits<double>::max();
+    for (const auto& index : indexes.list) {
+        if (alternatives[index].marks[majorCriteriaIndex] > min) {
+            withMin = index;
+            min = alternatives[index].marks[majorCriteriaIndex];
+        }
+    }
+
+    return alternatives[withMin];
 }
+

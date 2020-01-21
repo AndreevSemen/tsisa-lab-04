@@ -4,87 +4,70 @@
 
 constexpr size_t MaxMark = 10;
 
-double EuclideanDistance(const Marks& lhs, const Marks& rhs);
-bool IsDominate(const Marks& lhs, const Marks& rhs);
+double EuclideanDistance(const Marks& lhs, const Marks& rhs, const CriteriaIndexes& indexes);
+bool IsDominate(const Marks& lhs, const Marks& rhs, const CriteriaIndexes& indexes);
 MarksMatrix RemoveColumn(MarksMatrix& matrix, size_t columnIndex);
 
 Alternative ParetoMethod(MarksMatrix alternatives, CriteriaIndexes criteriaIndexes) {
-    std::vector<size_t> indexesToDelete;
-    for (size_t i = 0; i < alternatives.back().marks.size(); ++i) {
-        if (std::find(criteriaIndexes.begin(), criteriaIndexes.end(), i) ==
-            criteriaIndexes.end()) {
-            indexesToDelete.push_back(i);
+    Alternative utopia{"point of utopia"};
+    for (size_t i = 0; i < alternatives.front().marks.size(); ++i) {
+        if (i == 0 || i == 2) {
+            utopia.marks.push_back(0);
+        } else {
+            utopia.marks.push_back(10);
         }
     }
-    std::sort(indexesToDelete.begin(), indexesToDelete.end(), std::greater<>{});
 
-    for (const auto& columnIndex : indexesToDelete) {
-        RemoveColumn(alternatives, columnIndex);
-    }
-    indexesToDelete.clear();
-
+    IndexList indexes(0, alternatives.size());
     for (size_t i = 0; i < alternatives.size(); ++i) {
         for (size_t j = 0; j < alternatives.size(); ++j) {
             if (i == j) continue;
-            if (IsDominate(alternatives[i].marks, alternatives[j].marks)) {
-                if (std::find(indexesToDelete.begin(),
-                              indexesToDelete.end(), j) ==
-                    indexesToDelete.end()) {
-                    indexesToDelete.push_back(j);
+            if (IsDominate(alternatives[i].marks, alternatives[j].marks, criteriaIndexes)) {
+                if (!indexes.IsConsists(j)) {
+                    indexes.Remove(j);
                 }
             }
         }
     }
-    std::sort(indexesToDelete.begin(), indexesToDelete.end(), std::greater<>{});
-    for (auto index : indexesToDelete) {
-        alternatives.erase(alternatives.begin() + index);
-    }
 
-    std::cout << "Pareto set : " << std::endl;
-    for (const auto& [name, row] : alternatives) {
-        std::cout << std::setw(20) << name << " : ";
-        for (double mark : row) {
-            std::cout << mark << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    std::cout << "Utopia point : [10, 10]" << std::endl;
-
-    Alternative withMinDistance{"dummy", {}};
+    size_t withMinDistance = 0;
     double minDistance = std::numeric_limits<double>::max();
-    for (const auto& alternative : alternatives) {
-        Marks utopia(alternative.marks.size(), MaxMark);
-        auto distance = EuclideanDistance(alternative.marks, utopia);
+    for (const auto& index : indexes.list) {
+        auto distance = EuclideanDistance(alternatives[index].marks, utopia.marks, criteriaIndexes);
         if (distance < minDistance) {
-            withMinDistance = alternative;
             minDistance = distance;
+            withMinDistance = index;
         }
     }
 
-    return withMinDistance;
+    return alternatives[withMinDistance];
 }
 
-double EuclideanDistance(const Marks& lhs, const Marks& rhs) {
+double EuclideanDistance(const Marks& lhs, const Marks& rhs, const CriteriaIndexes& indexes) {
     double sum = 0;
     for (size_t i = 0; i < lhs.size(); ++i) {
+        if (std::find(indexes.begin(), indexes.end(), i) == indexes.end()) {
+            continue;
+        }
         sum += std::pow(lhs[i] - rhs[i], 2);
     }
     return std::sqrt(sum);
 }
 
-bool IsDominate(const Marks& lhs, const Marks& rhs) {
+bool IsDominate(const Marks& lhs, const Marks& rhs, const CriteriaIndexes& indexes) {
     for (size_t i = 0; i < lhs.size(); ++i) {
-        if (lhs[i] < rhs[i]) {
-            return false;
+        if (std::find(indexes.begin(), indexes.end(), i) == indexes.end()) {
+            continue;
+        }
+        if (i == 0 || i == 2) {
+            if (lhs[i] > rhs[i]) {
+                return false;
+            }
+        } else {
+            if (lhs[i] < rhs[i]) {
+                return false;
+            }
         }
     }
     return true;
-}
-
-MarksMatrix RemoveColumn(MarksMatrix& matrix, size_t columnIndex) {
-    for (auto& [ _ , row] : matrix) {
-        row.erase(row.begin() + columnIndex);
-    }
-    return matrix;
 }

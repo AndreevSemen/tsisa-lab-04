@@ -14,10 +14,10 @@ int main() {
      *     distance, quality, control, infrastructure
      * */
     MarksMatrix alternatives = {
-        Alternative{"motorway"    , {2, 7, 2, 5}},
-        Alternative{"highway"     , {3, 4, 2, 6}},
-        Alternative{"dirt road"   , {5, 3, 4, 3}},
-        Alternative{"country road", {7, 2, 7, 2}},
+        Alternative{"motorway"    , {7, 7, 7, 6}},
+        Alternative{"highway"     , {6, 4, 7, 7}},
+        Alternative{"dirt road"   , {4, 3, 5, 3}},
+        Alternative{"country road", {2, 1, 1, 1}},
     };
     std::cout << "Alternatives :" << std::endl;
     for (const auto& alternative : alternatives) {
@@ -28,7 +28,7 @@ int main() {
         std::cout << std::endl;
     }
 
-    Marks odds = {0, 0.1, 0.4, 0.1};
+    Marks odds = {1, 0.1, 1.5, 0.1};
     std::cout << "Major criteria answer : "
               << MajorCriterionMethod(alternatives, odds).name << std::endl;
 

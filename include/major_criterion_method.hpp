@@ -6,6 +6,6 @@
 #include <types.hpp>
 
 // returns accepted alternative
-Alternative MajorCriterionMethod(MarksMatrix alternatives, const Marks& allowedCoefficients);
+Alternative MajorCriterionMethod(MarksMatrix alternatives, Marks odds);
 
 #endif // INCLUDE_MAJOR_CRITERION_METHOD_HPP_
